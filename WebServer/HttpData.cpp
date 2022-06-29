@@ -286,12 +286,12 @@ void HttpData::handleConn() {
     if (events_ != 0) {//有注册事件
       int timeout = DEFAULT_EXPIRED_TIME;
       if (keepAlive_) timeout = DEFAULT_KEEP_ALIVE_TIME;
-      if ((events_ & EPOLLIN) && (events_ & EPOLLOUT)) {
+      if ((events_ & EPOLLIN) && (events_ & EPOLLOUT)) {//为什么同时有读写事件，要只保留写事件？
         events_ = __uint32_t(0);
         events_ |= EPOLLOUT;
       }
       // events_ |= (EPOLLET | EPOLLONESHOT);
-      events_ |= EPOLLET;
+      events_ |= EPOLLET;//设置边沿触发
       loop_->updatePoller(channel_, timeout);
 
     } else if (keepAlive_) {//保持连接状态
@@ -299,11 +299,11 @@ void HttpData::handleConn() {
       // events_ |= (EPOLLIN | EPOLLET | EPOLLONESHOT);
       int timeout = DEFAULT_KEEP_ALIVE_TIME;
       loop_->updatePoller(channel_, timeout);
-    } else {
+    } else {//既没有注册事件也没有保持连接状态
       // cout << "close normally" << endl;
       // loop_->shutdown(channel_);
       // loop_->runInLoop(bind(&HttpData::handleClose, shared_from_this()));
-      events_ |= (EPOLLIN | EPOLLET);
+      events_ |= (EPOLLIN | EPOLLET);//为啥还要注册读事件和边沿触发
       // events_ |= (EPOLLIN | EPOLLET | EPOLLONESHOT);
       int timeout = (DEFAULT_KEEP_ALIVE_TIME >> 1);
       loop_->updatePoller(channel_, timeout);
