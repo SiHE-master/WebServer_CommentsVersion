@@ -23,7 +23,7 @@ Server::Server(EventLoop *loop, int threadNum, int port)
     abort();
   }
 }
-
+//设置acceptChannel_中的事件，并绑定处理新连接的函数，并注册事件
 void Server::start() {
   eventLoopThreadPool_->start();//启动线程池
   // acceptChannel_->setEvents(EPOLLIN | EPOLLET | EPOLLONESHOT);
@@ -33,17 +33,18 @@ void Server::start() {
   loop_->addToPoller(acceptChannel_, 0);//把负责监听的channel中相应事件和文件描述符注册到mainloop中poller的epollfd 并且没有设置定时器
   started_ = true;
 }
-//
+//有新连接到来 accept
 void Server::handNewConn() {
   struct sockaddr_in client_addr;
   memset(&client_addr, 0, sizeof(struct sockaddr_in));//也可以直接sizeof client_addr
   socklen_t client_addr_len = sizeof(client_addr);
   int accept_fd = 0;
+  //循环accept直到没有新连接
   while ((accept_fd = accept(listenFd_, (struct sockaddr *)&client_addr,
                              &client_addr_len)) > 0) {
-    EventLoop *loop = eventLoopThreadPool_->getNextLoop();
+    EventLoop *loop = eventLoopThreadPool_->getNextLoop();//从线程池中为新连接分配一个线程
     LOG << "New connection from " << inet_ntoa(client_addr.sin_addr) << ":"
-        << ntohs(client_addr.sin_port);
+        << ntohs(client_addr.sin_port);//用client_addr.sin_addr.s_addr也可以
     // cout << "new connection" << endl;
     // cout << inet_ntoa(client_addr.sin_addr) << endl;
     // cout << ntohs(client_addr.sin_port) << endl;
@@ -57,9 +58,11 @@ void Server::handNewConn() {
     // 限制服务器的最大并发连接数
     if (accept_fd >= MAXFDS) {
       close(accept_fd);
-      continue;
+      continue;//continue的目的应该是下一轮说不定有文件描述符空出来了可以重用
     }
-    // 设为非阻塞模式
+    // 设为非阻塞模式 原因：
+    //使用epoll的ET模式
+    //epoll返回读写事件，但不一定真的可读写
     if (setSocketNonBlocking(accept_fd) < 0) {
       LOG << "Set non block failed!";
       // perror("Set non block failed!");
@@ -69,9 +72,9 @@ void Server::handNewConn() {
     setSocketNodelay(accept_fd);
     // setSocketNoLinger(accept_fd);
 
-    shared_ptr<HttpData> req_info(new HttpData(loop, accept_fd));
-    req_info->getChannel()->setHolder(req_info);
-    loop->queueInLoop(std::bind(&HttpData::newEvent, req_info));
+    shared_ptr<HttpData> req_info(new HttpData(loop, accept_fd));//构造时初始化了channel并指向
+    req_info->getChannel()->setHolder(req_info);//设置channel指向上层持有这个channel的HttpData对象
+    loop->queueInLoop(std::bind(&HttpData::newEvent, req_info));//把新事件到来的设置函数加入该eventloop下的待处理事件队列
   }
-  acceptChannel_->setEvents(EPOLLIN | EPOLLET);
+  acceptChannel_->setEvents(EPOLLIN | EPOLLET);//为什么要重新又注册
 }

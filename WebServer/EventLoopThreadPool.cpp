@@ -23,7 +23,7 @@ void EventLoopThreadPool::start() {
 // 如果工作在多线程中，baseLoop_(mainLoop)会默认以轮询的方式分配Channel给subLoop
 // 如果只设置一个线程 也就是只有一个mainReactor 无subReactor 那么轮询只有一个线程 getNextLoop()每次都返回当前的baseLoop_
 EventLoop *EventLoopThreadPool::getNextLoop() {
-  baseLoop_->assertInLoopThread();
+  baseLoop_->assertInLoopThread();//确保只有mainloop能够调用该函数
   assert(started_);
   EventLoop *loop = baseLoop_;
   if (!loops_.empty()) {
