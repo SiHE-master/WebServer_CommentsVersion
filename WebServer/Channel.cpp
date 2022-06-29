@@ -14,7 +14,7 @@
 
 using namespace std;
 
-Channel::Channel(EventLoop *loop)//为什么默认绑定的文件描述符是标准输入的0
+Channel::Channel(EventLoop *loop)//默认绑定的文件描述符是标准输入的0 后面可以改
     : loop_(loop), events_(0), lastEvents_(0), fd_(0) {}
 
 Channel::Channel(EventLoop *loop, int fd)

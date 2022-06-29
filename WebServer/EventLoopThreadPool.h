@@ -18,7 +18,7 @@ class EventLoopThreadPool : noncopyable {
   EventLoop* getNextLoop();
 
  private:
-  EventLoop* baseLoop_;
+  EventLoop* baseLoop_;//指向的mainloop
   bool started_;
   int numThreads_;
   int next_;
