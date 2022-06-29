@@ -244,16 +244,16 @@ void HttpData::handleRead() {
     }
   } while (false);//只执行一次，如何使AGAIN生效？
   // cout << "state_=" << state_ << endl;
-  if (!error_) {
+  if (!error_) {//没出错才执行
     if (outBuffer_.size() > 0) {
       handleWrite();
       // events_ |= EPOLLOUT;
     }
     // error_ may change
-    if (!error_ && state_ == STATE_FINISH) {
+    if (!error_ && state_ == STATE_FINISH) {//handleWrite中可能也会出错
       this->reset();
-      if (inBuffer_.size() > 0) {
-        if (connectionState_ != H_DISCONNECTING) handleRead();
+      if (inBuffer_.size() > 0) {//这里剩下的如果还有的话那应该是是请求体了
+        if (connectionState_ != H_DISCONNECTING) handleRead();//重新读  这里好像递归了
       }
 
       // if ((keepAlive_ || inBuffer_.size() > 0) && connectionState_ ==
@@ -262,8 +262,8 @@ void HttpData::handleRead() {
       //     this->reset();
       //     events_ |= EPOLLIN;
       // }
-    } else if (!error_ && connectionState_ != H_DISCONNECTED)
-      events_ |= EPOLLIN;
+    } else if (!error_ && connectionState_ != H_DISCONNECTED)//如果没出错并且连接未断开
+      events_ |= EPOLLIN;//注册读事件  为什么？
   }
 }
 
@@ -272,18 +272,18 @@ void HttpData::handleWrite() {
     __uint32_t &events_ = channel_->getEvents();
     if (writen(fd_, outBuffer_) < 0) {
       perror("writen");
-      events_ = 0;
+      events_ = 0;//为什么要置零
       error_ = true;
     }
-    if (outBuffer_.size() > 0) events_ |= EPOLLOUT;
+    if (outBuffer_.size() > 0) events_ |= EPOLLOUT;//给channel注册写事件 为什么
   }
 }
 
 void HttpData::handleConn() {
-  seperateTimer();
+  seperateTimer();//上来就删了定时器？
   __uint32_t &events_ = channel_->getEvents();
   if (!error_ && connectionState_ == H_CONNECTED) {
-    if (events_ != 0) {
+    if (events_ != 0) {//有注册事件
       int timeout = DEFAULT_EXPIRED_TIME;
       if (keepAlive_) timeout = DEFAULT_KEEP_ALIVE_TIME;
       if ((events_ & EPOLLIN) && (events_ & EPOLLOUT)) {
@@ -294,8 +294,8 @@ void HttpData::handleConn() {
       events_ |= EPOLLET;
       loop_->updatePoller(channel_, timeout);
 
-    } else if (keepAlive_) {
-      events_ |= (EPOLLIN | EPOLLET);
+    } else if (keepAlive_) {//保持连接状态
+      events_ |= (EPOLLIN | EPOLLET);//注册读事件和边沿触发
       // events_ |= (EPOLLIN | EPOLLET | EPOLLONESHOT);
       int timeout = DEFAULT_KEEP_ALIVE_TIME;
       loop_->updatePoller(channel_, timeout);
@@ -309,9 +309,9 @@ void HttpData::handleConn() {
       loop_->updatePoller(channel_, timeout);
     }
   } else if (!error_ && connectionState_ == H_DISCONNECTING &&
-             (events_ & EPOLLOUT)) {
-    events_ = (EPOLLOUT | EPOLLET);
-  } else {
+             (events_ & EPOLLOUT)) {//正在断开且有注册写事件
+    events_ = (EPOLLOUT | EPOLLET);//注册写事件和边沿触发
+  } else {//给loop执行处理关闭的回调函数
     // cout << "close with errors" << endl;
     loop_->runInLoop(bind(&HttpData::handleClose, shared_from_this()));
   }
@@ -481,7 +481,7 @@ HeaderState HttpData::parseHeaders() {
   str = str.substr(now_read_line_begin);//没有读到结束的回车换行，从最后读的一行开始保留
   return PARSE_HEADER_AGAIN;
 }
-
+//解析请求体
 AnalysisState HttpData::analysisRequest() {
   if (method_ == METHOD_POST) {
     // ------------------------------------------------------
@@ -510,16 +510,16 @@ AnalysisState HttpData::analysisRequest() {
     // return ANALYSIS_SUCCESS;
   } else if (method_ == METHOD_GET || method_ == METHOD_HEAD) {
     string header;
-    header += "HTTP/1.1 200 OK\r\n";
+    header += "HTTP/1.1 200 OK\r\n";//状态行
     if (headers_.find("Connection") != headers_.end() &&
         (headers_["Connection"] == "Keep-Alive" ||
-         headers_["Connection"] == "keep-alive")) {
+         headers_["Connection"] == "keep-alive")) {//这里用strcasecmp不就行了
       keepAlive_ = true;
       header += string("Connection: Keep-Alive\r\n") + "Keep-Alive: timeout=" +
                 to_string(DEFAULT_KEEP_ALIVE_TIME) + "\r\n";
     }
     int dot_pos = fileName_.find('.');
-    string filetype;
+    string filetype;//获取文件类型
     if (dot_pos < 0)
       filetype = MimeType::getMime("default");
     else
@@ -538,13 +538,13 @@ AnalysisState HttpData::analysisRequest() {
 
       header += "\r\n";
       outBuffer_ += header;
-      outBuffer_ += string(favicon, favicon + sizeof favicon);
-      ;
+      outBuffer_ += string(favicon, favicon + sizeof favicon);//响应正文
+      //;//多打了吧
       return ANALYSIS_SUCCESS;
     }
 
     struct stat sbuf;
-    if (stat(fileName_.c_str(), &sbuf) < 0) {
+    if (stat(fileName_.c_str(), &sbuf) < 0) {//没这文件
       header.clear();
       handleError(fd_, 404, "Not Found!");
       return ANALYSIS_ERROR;
@@ -556,7 +556,7 @@ AnalysisState HttpData::analysisRequest() {
     header += "\r\n";
     outBuffer_ += header;
 
-    if (method_ == METHOD_HEAD) return ANALYSIS_SUCCESS;
+    if (method_ == METHOD_HEAD) return ANALYSIS_SUCCESS;//如果只获取文件信息，到这一步就可以了
 
     int src_fd = open(fileName_.c_str(), O_RDONLY, 0);
     if (src_fd < 0) {
@@ -564,9 +564,9 @@ AnalysisState HttpData::analysisRequest() {
       handleError(fd_, 404, "Not Found!");
       return ANALYSIS_ERROR;
     }
-    void *mmapRet = mmap(NULL, sbuf.st_size, PROT_READ, MAP_PRIVATE, src_fd, 0);
-    close(src_fd);
-    if (mmapRet == (void *)-1) {
+    void *mmapRet = mmap(NULL, sbuf.st_size, PROT_READ, MAP_PRIVATE, src_fd, 0);//把文件内容写入内存
+    close(src_fd);//打开的文件描述符到这里就可以关闭了
+    if (mmapRet == (void *)-1) {//打开失败
       munmap(mmapRet, sbuf.st_size);
       outBuffer_.clear();
       handleError(fd_, 404, "Not Found!");
