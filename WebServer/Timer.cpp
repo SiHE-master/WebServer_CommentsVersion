@@ -74,7 +74,7 @@ void TimerManager::handleExpiredEvent() {
     SPTimerNode ptimer_now = timerNodeQueue.top();
     if (ptimer_now->isDeleted())
       timerNodeQueue.pop();
-    else if (ptimer_now->isValid() == false)//到期
+    else if (ptimer_now->isValid() == false)//到期且deleted也被置为true
       timerNodeQueue.pop();
     else
       break;//剩余时间最短的都没有到期，则都没到期
