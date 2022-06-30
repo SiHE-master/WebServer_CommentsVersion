@@ -94,7 +94,7 @@ void EventLoop::queueInLoop(Functor&& cb) {
      **/
   if (!isInLoopThread() || callingPendingFunctors_) wakeup();
 }
-
+//循环等待poller_中epollfd_的事件到来
 void EventLoop::loop() {
   assert(!looping_);
   assert(isInLoopThread());
@@ -107,7 +107,7 @@ void EventLoop::loop() {
     ret.clear();
     ret = poller_->poll();//调用wakeup也可以将其从阻塞状态中唤醒
     eventHandling_ = true;
-    for (auto& it : ret) it->handleEvents();
+    for (auto& it : ret) it->handleEvents();//mainloop一开始就只能返回其监听的acceptChannel_
     eventHandling_ = false;
     doPendingFunctors();
     poller_->handleExpired();

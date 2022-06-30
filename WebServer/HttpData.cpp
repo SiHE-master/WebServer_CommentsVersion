@@ -609,7 +609,7 @@ void HttpData::handleClose() {
   shared_ptr<HttpData> guard(shared_from_this());
   loop_->removeFromPoller(channel_);
 }
-//新事件加入，设置新事件，并将相应channel加入loop_，这些都channel共享一个fd啊，然后事件也一样，有什么意义？
+//设置channel感兴趣的事件为读&边沿触发&oneshot，并注册和设置定时器
 void HttpData::newEvent() {
   channel_->setEvents(DEFAULT_EVENT);
   loop_->addToPoller(channel_, DEFAULT_EXPIRED_TIME);

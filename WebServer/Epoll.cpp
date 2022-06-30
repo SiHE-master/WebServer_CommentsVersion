@@ -100,8 +100,9 @@ std::vector<SP_Channel> Epoll::getEventsRequest(int events_num) {
     SP_Channel cur_req = fd2chan_[fd];
 
     if (cur_req) {
-      cur_req->setRevents(events_[i].events);
-      cur_req->setEvents(0);//为什么要把注册的事件清0  wakeupchannel的话 会在处理读事件后再注册事件
+      cur_req->setRevents(events_[i].events);//告诉实际发生了什么事件
+      //为什么要把注册的事件清0  大概是为了配合EPOLLONESHOT的使用
+      cur_req->setEvents(0);
       // 加入线程池之前将Timer和request分离
       // cur_req->seperateTimer();
       req_data.push_back(cur_req);

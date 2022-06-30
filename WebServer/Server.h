@@ -13,7 +13,8 @@ class Server {
   EventLoop *getLoop() const { return loop_; } //不改变数据成员的函数加上const关键字进行标识，提高程序的可读性和可靠性。
   void start(); //启动服务器
   void handNewConn();
-  void handThisConn() { loop_->updatePoller(acceptChannel_); }//处理已有连接
+  //更新acceptChannel_状态 估计是配合EPOLLONESHOT使用的
+  void handThisConn() { loop_->updatePoller(acceptChannel_); }
 
  private:
   EventLoop *loop_;//这个估计就是指向的mainloop

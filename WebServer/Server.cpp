@@ -23,7 +23,7 @@ Server::Server(EventLoop *loop, int threadNum, int port)
     abort();
   }
 }
-//设置acceptChannel_中的事件，并绑定处理新连接的函数，并注册事件
+//启动线程池，设置acceptChannel_中的事件，并绑定处理新连接的函数，并注册事件
 void Server::start() {
   eventLoopThreadPool_->start();//启动线程池
   // acceptChannel_->setEvents(EPOLLIN | EPOLLET | EPOLLONESHOT);
@@ -76,5 +76,5 @@ void Server::handNewConn() {
     req_info->getChannel()->setHolder(req_info);//设置channel指向上层持有这个channel的HttpData对象
     loop->queueInLoop(std::bind(&HttpData::newEvent, req_info));//把新事件到来的设置函数加入该eventloop下的待处理事件队列
   }
-  acceptChannel_->setEvents(EPOLLIN | EPOLLET);//为什么要重新又注册
+  acceptChannel_->setEvents(EPOLLIN | EPOLLET);//重新又注册的原因是getEventsRequest中清掉了
 }

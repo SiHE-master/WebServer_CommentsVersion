@@ -51,7 +51,7 @@ class EventLoop {
   std::vector<Functor> pendingFunctors_;//待处理事件队列
   bool callingPendingFunctors_;//表示当前loop是否正在执行回调函数
   const pid_t threadId_;
-  shared_ptr<Channel> pwakeupChannel_;
+  shared_ptr<Channel> pwakeupChannel_;//mainloop没有用到  wakeupFd_也没用到
 
   void wakeup();
   void handleRead();
